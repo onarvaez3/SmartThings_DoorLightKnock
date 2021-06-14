@@ -4,7 +4,7 @@
  *
  *  Author: ONarvaez
  *
- *  Turns on and optionally blinks a light when vibration was detected.
+ *  Turns on and optionally blinks a light when vibration is detected.
  *
  *  Date: 2020-02-20
  */
@@ -13,7 +13,7 @@ definition(
 	name: "Door Light Knock",
 	namespace: "onarvaez3",
 	author: "ONarvaez",
-	description: "Turns on and optionally blinks a light when vibration was detected.",
+	description: "Turns on and optionally blinks a light when vibration is detected.",
 	category: "My Apps",
 	iconUrl: "https://s3.amazonaws.com/smartapp-icons/Connections/Cat-Connections%402x.png",
 	iconX2Url: "https://s3.amazonaws.com/smartapp-icons/FunAndSocial/App-HotTubTuner%402x.png"
@@ -96,6 +96,7 @@ def turnOnLights() {
     if (switches) {
 		def delay = 0
 		def lightsOriginalState = switches.collect{it.currentSwitch != "on"}
+		def lightsOriginalLevel = switches.collect{it.currentLevel}
 		
         log.trace "flash mode is ${lightMode}"
         if(lightMode?.equals("Flash and Turn On Lights") || lightMode?.equals("1")) {
@@ -109,7 +110,7 @@ def turnOnLights() {
 		}
 
 		log.trace "lights will turn off in ${turnOffAfter} min"
-		runIn(turnOffAfter * 60, turnOffLights, [data: [originalState: lightsOriginalState]])
+		runIn(turnOffAfter * 60, turnOffLights, [data: [originalState: lightsOriginalState, originalLevel: lightsOriginalLevel]])
     }
 }
 
@@ -123,11 +124,16 @@ def turnOffLights(data) {
 		if(data.originalState[i]) {
 			s.off()
 		} else {
-			if(s.hasCommand("setLevel")) {
-				s.setLevel(50)
-			}
-
 			s.on()
+
+			if(s.hasCommand("setLevel")) {
+				if(location.currentMode == "Away")
+				{
+					s.setLevel(100)
+				} else {
+					s.setLevel(data.originalLevel[i])
+				}
+			}			
 		}
 	}
 
@@ -154,6 +160,8 @@ def flashLights() {
 		numFlashes.times {
 			log.trace "Flash!"
 			switches.eachWithIndex {s, i ->
+				log.trace "current level value: ${s.currentLevel}"
+
 				if(s.hasCommand("setLevel"))
 				{
 					s.setLevel(100)
